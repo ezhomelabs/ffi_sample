@@ -47,7 +47,7 @@ dart run ffigen
 
 ### 执行
 ```
-dart run bin/main.dart
+dart run
 ```
 
 ## 方法2
