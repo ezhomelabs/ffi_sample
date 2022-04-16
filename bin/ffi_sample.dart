@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:ffi' as ffi;
 import 'dart:ffi';
 import 'dart:isolate';
+import 'dart:typed_data';
 import 'package:ffi/ffi.dart';
 import 'dart:io' show Platform, Directory;
 
@@ -38,6 +39,7 @@ ReceivePort _receivePort = ReceivePort();
 
 typedef NativeAsyncCallbackFunc = Void Function();
 final NativeLibrary nativeLibrary = initLibrary();
+
 void main() {
   // 初始化互调框架
 
@@ -65,8 +67,8 @@ void main() {
   nativeLibrary.uint64++;
   nativeLibrary.float32++;
   nativeLibrary.double64++;
-  nativeLibrary.str1 = "修改一下".toNativeUtf8().cast<ffi.Int8>();
-  debugPrint("修改后:");
+  nativeLibrary.str1 = "xxxxxxxxxxxxxxxxxxxxxx".toNativeUtf8().cast<ffi.Int8>();
+  
   debugPrint("int8=${nativeLibrary.int8}");
   debugPrint("int16=${nativeLibrary.int16}");
   debugPrint("int32=${nativeLibrary.int32}");
@@ -85,6 +87,22 @@ void main() {
   nativeLibrary.hello_world();
   // 有参数
   nativeLibrary.cPrint("我认为这个输出很有意义".toNativeUtf8().cast<ffi.Int8>());
+
+  Int8List int8list = nativeLibrary.str1.asTypedList(8);
+
+  int8list.forEach((elem) => print("int8list: " + String.fromCharCode(elem)));
+
+  // The simplest solution would be to use C memory as the buffer. You can use a Uint8List view on that buffer in Dart. 
+  var outBuf = malloc<Int8>(4);
+  outBuf[0] = 0x41;
+  outBuf[1] = 0x42;
+  outBuf[2] = 0x43;
+  outBuf[3] = 0;
+  nativeLibrary.cPrint(outBuf);
+ // free in c
+ // malloc.free(outBuf);
+
+
   // 有返回值
   debugPrint("有返回值 -> " + nativeLibrary.getName().cast<Utf8>().toDartString());
   // 有参有返回值
@@ -135,10 +153,13 @@ void main() {
   m.setName('SY is a dog');
   debugPrint(m.getName());
 
+//Dart_PostCObject_DL <- Dart_CObject_kArray
+//https://github.com/dart-lang/sdk/blob/53c04ff910c0332863c7d08ce2bd4327fc2225b1/runtime/bin/ffi_test/ffi_test_functions_vmspecific.cc
+//https://github.com/dart-lang/sdk/blob/e995cb5f7cd67d39c1ee4bdbe95c8241db36725f/samples/ffi/async/sample_native_port_call.dart
+
   // ********** 异步 **********/
   void ensureNativeInitialized() {
-    var nativeInited =
-        nativeLibrary.InitDartApiDL(NativeApi.initializeApiDLData);
+    var nativeInited = nativeLibrary.InitDartApiDL(NativeApi.initializeApiDLData);
     assert(nativeInited == 0, 'DART_API_DL_MAJOR_VERSION != 2');
     _receivePort.listen(_handleNativeMessage);
     nativeLibrary.registerSendPort(_receivePort.sendPort.nativePort);

@@ -123,9 +123,14 @@ DART_EXPORT void registerSendPort(Dart_Port send_port)
     localPrint("设置send port");
     send_port_ = send_port;
 }
+
+//Dart_PostCObject_DL <- Dart_CObject_kArray
+//https://github.com/dart-lang/sdk/blob/53c04ff910c0332863c7d08ce2bd4327fc2225b1/runtime/bin/ffi_test/ffi_test_functions_vmspecific.cc
+//https://github.com/dart-lang/sdk/blob/e995cb5f7cd67d39c1ee4bdbe95c8241db36725f/samples/ffi/async/sample_native_port_call.dart
+
 void *thread_func(void *args)
 {
-    localPrint("异步线程： (%p)", pthread_self());
+    localPrint("sub thread： (%p)", pthread_self());
     sleep(1 /* seconds */); // 等待1s
     Dart_CObject dart_object;
     dart_object.type = Dart_CObject_kInt64;
@@ -136,7 +141,7 @@ void *thread_func(void *args)
 }
 DART_EXPORT void nativeAsyncCallback(VoidCallbackFunc callback)
 {
-    localPrint("主线程： (%p)", pthread_self());
+    localPrint("main thread： (%p)", pthread_self());
     pthread_t callback_thread;
     int ret = pthread_create(&callback_thread, NULL, thread_func, (void *)callback);
     if (ret != 0)
@@ -144,7 +149,9 @@ DART_EXPORT void nativeAsyncCallback(VoidCallbackFunc callback)
         localPrint("线程内部错误: error_code=%d", ret);
     }
 }
+
+// executeCallback函数其实一开始可能不好理解，它其实没啥用，只是Dart侧监听的Port接受到的值是一个C的内存地址，Dart侧无法执行，所以需要传给你C/C++来执行。
 DART_EXPORT void executeCallback(VoidCallbackFunc callback) {
-    localPrint("执行dart返回的函数，线程： (%p)", pthread_self());
+    localPrint("main thread： (%p)", pthread_self());
     callback();
 }
